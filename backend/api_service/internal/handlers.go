@@ -3,6 +3,7 @@ package internal
 import (
 	"api_service/configs"
 	"api_service/models"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,10 +38,10 @@ func (h *Handler) AuthHandler(resp http.ResponseWriter, req *http.Request) {
 
 	// Добавить пользователя в БД.
 
-	jwtReq, err := http.NewRequest(http.MethodPost, configs.JWTURL, req.Body)
+	jwtReq, err := http.NewRequest(http.MethodPost, configs.JWTURL, bytes.NewReader(body))
 	if err != nil {
-		configs.APILogger.Println(err.Error())
-		http.Error(resp, err.Error(), http.StatusInternalServerError)
+		configs.APILogger.Println("new jwt request failed:", err)
+		http.Error(resp, "internal error", http.StatusInternalServerError)
 		return
 	}
 	jwtReq.Header.Set("Content-Type", "application/json")
