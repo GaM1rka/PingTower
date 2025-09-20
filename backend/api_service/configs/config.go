@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	JWTURL    = "http://auth_service:8081/generate"
-	DBURL     = "http://db_service:8083"
-	PingURL   = "http://ping_service:8082"
-	KafkaAddr = "kafka1:29092"
+	JWTURL      = "http://auth_service:8081/generate"
+	JWTValidate = "http://auth_service:8081/validate"
+	DBURL       = "http://db_service:8083"
+	PingURL     = "http://ping_service:8082"
+	KafkaAddr   = "kafka1:29092"
 )
 
 var APILogger *log.Logger

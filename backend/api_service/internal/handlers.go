@@ -10,12 +10,11 @@ import (
 	"io"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type Handler struct{}
@@ -317,23 +316,66 @@ func (h *Handler) getJWTToken(email string, userID int, password string) (*model
 
 func (h *Handler) verifyJWT(req *http.Request) (int, error) {
 	authHeader := req.Header.Get("Authorization")
-	if authHeader == "" {
-		return 0, fmt.Errorf("missing authorization header")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return 0, fmt.Errorf("missing/invalid authorization header")
 	}
 
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte("secret"), nil // Заменить на реальный секрет (или читать из ENV)
-	})
+	// 1) валидируем токен в auth_service
+	vreq, err := http.NewRequest(http.MethodGet, configs.JWTValidate, nil)
+	if err != nil {
+		return 0, err
+	}
+	vreq.Header.Set("Authorization", authHeader)
 
-	if err != nil || !token.Valid {
+	vresp, err := configs.Client.Do(vreq)
+	if err != nil {
+		return 0, fmt.Errorf("validate call failed: %w", err)
+	}
+	defer vresp.Body.Close()
+
+	if vresp.StatusCode != http.StatusOK {
+		// auth сервис возвращает 200 с {valid:false} — но на всякий случай обработаем и коды ≠ 200
+		b, _ := io.ReadAll(vresp.Body)
+		return 0, fmt.Errorf("validate returned %d: %s", vresp.StatusCode, string(b))
+	}
+
+	var vbody struct {
+		Valid bool   `json:"valid"`
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(vresp.Body).Decode(&vbody); err != nil {
+		return 0, fmt.Errorf("invalid validate json: %w", err)
+	}
+	if !vbody.Valid || vbody.Email == "" {
 		return 0, fmt.Errorf("invalid token")
 	}
 
-	claims := token.Claims.(jwt.MapClaims)
-	return int(claims["user_id"].(float64)), nil
-}
+	// 2) получаем user_id по email у DB-сервиса
+	u := configs.DBURL + "/user?email=" + url.QueryEscape(vbody.Email)
+	ureq, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return 0, err
+	}
+	uresp, err := configs.Client.Do(ureq)
+	if err != nil {
+		return 0, err
+	}
+	defer uresp.Body.Close()
 
+	if uresp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("user not found")
+	}
+	var got struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(uresp.Body).Decode(&got); err != nil {
+		return 0, err
+	}
+	if got.ID == 0 {
+		return 0, fmt.Errorf("user not found")
+	}
+	return got.ID, nil
+}
 func (h *Handler) getSiteLogs(userID, siteID int) ([]models.PingLog, error) {
 	req, err := http.NewRequest(http.MethodGet,
 		fmt.Sprintf("%s/checker/%d?user_id=%d", configs.DBURL, siteID, userID), nil)

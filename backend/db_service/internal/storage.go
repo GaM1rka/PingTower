@@ -16,6 +16,7 @@ type Storage struct {
 }
 
 type PingLog struct {
+	SiteID   int       `json:"id"`
 	ReqTime  time.Time `json:"req_time"`
 	RespTime int64     `json:"resp_time"`
 	Status   string    `json:"status"`
@@ -70,10 +71,10 @@ func InitClickHouse() (*sql.DB, error) {
 
 	conn := clickhouse.OpenDB(&clickhouse.Options{
 		Addr: []string{"clickhouse_db:9000"},
-		Auth: clickhouse.Auth{
-			Database: "default",
-			Username: "default",
-			Password: "",
+		Auth: clickhouse.Auth{Database: "default", Username: "default", Password: ""},
+		Settings: clickhouse.Settings{
+			"max_memory_usage":          0, // безлимит для запроса (или поставь, например, 1e9)
+			"max_memory_usage_for_user": 0,
 		},
 		DialTimeout: 10 * time.Second,
 	})
@@ -186,62 +187,80 @@ func (s *Storage) AddSiteWithCheck(userID int, site string, checkInterval int) e
 
 // Методы работы с ClickHouse
 func (s *Storage) GetSiteLogs(userID, siteID int) ([]PingLog, error) {
-	// Сначала получаем информацию о сайте
+	// 1) достаём URL сайта по siteID
 	var site string
 	err := s.psql.QueryRow(`
-		SELECT site FROM user_sites WHERE id = $1 AND user_id = $2
-	`, siteID, userID).Scan(&site)
+        SELECT site FROM user_sites WHERE id = $1 AND user_id = $2
+    `, siteID, userID).Scan(&site)
 	if err != nil {
 		return nil, err
 	}
 
-	// Затем получаем логи из ClickHouse
+	// 2) читаем логи из ClickHouse
 	rows, err := s.ch.Query(`
-		SELECT req_time, resp_time, status, site
-		FROM ping_logs 
-		WHERE user_id = ? AND site = ?
-		ORDER BY req_time DESC
-	`, userID, site)
+        SELECT req_time, resp_time, status, site
+        FROM ping_logs
+        WHERE user_id = ? AND site = ?
+        ORDER BY req_time DESC
+    `, userID, site)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	// 3) маппим в структуру и проставляем SiteID
 	var logs []PingLog
 	for rows.Next() {
 		var log PingLog
-		err := rows.Scan(&log.ReqTime, &log.RespTime, &log.Status, &log.Site)
-		if err != nil {
+		if err := rows.Scan(&log.ReqTime, &log.RespTime, &log.Status, &log.Site); err != nil {
 			return nil, err
 		}
+		log.SiteID = siteID // ← вот здесь добавляем ID
 		logs = append(logs, log)
 	}
-
 	return logs, nil
 }
 
 func (s *Storage) GetAllUserLogs(userID int) ([]PingLog, error) {
+	// 1) Собираем мапу URL -> site_id из Postgres
+	siteIDByURL := map[string]int{}
+	rs, err := s.psql.Query(`SELECT id, site FROM user_sites WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, err
+	}
+	for rs.Next() {
+		var sid int
+		var url string
+		if err := rs.Scan(&sid, &url); err != nil {
+			rs.Close()
+			return nil, err
+		}
+		siteIDByURL[url] = sid
+	}
+	rs.Close()
+
+	// 2) Читаем логи из ClickHouse
 	rows, err := s.ch.Query(`
-		SELECT req_time, resp_time, status, site
-		FROM ping_logs 
-		WHERE user_id = ?
-		ORDER BY site, req_time DESC
-	`, userID)
+        SELECT req_time, resp_time, status, site
+        FROM ping_logs
+        WHERE user_id = ?
+        ORDER BY site, req_time DESC
+    `, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	// 3) Маппим и подставляем SiteID по URL
 	var logs []PingLog
 	for rows.Next() {
 		var log PingLog
-		err := rows.Scan(&log.ReqTime, &log.RespTime, &log.Status, &log.Site)
-		if err != nil {
+		if err := rows.Scan(&log.ReqTime, &log.RespTime, &log.Status, &log.Site); err != nil {
 			return nil, err
 		}
+		log.SiteID = siteIDByURL[log.Site] // будет 0, если сайта нет в user_sites
 		logs = append(logs, log)
 	}
-
 	return logs, nil
 }
 
