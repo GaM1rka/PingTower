@@ -24,6 +24,7 @@ type UserSites struct {
 }
 
 type PingLog struct {
+	ID       int    `json:"id"` // ← добавь это поле
 	ReqTime  string `json:"req_time"`
 	RespTime int64  `json:"resp_time"`
 	Status   string `json:"status"`
