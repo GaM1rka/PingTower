@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    mem_limit: 256m
+    cpus: "0.3"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks: [app-network]
+
+  kafka1:
+    image: confluentinc/cp-kafka:7.4.0
+    mem_limit: 512m
+    cpus: "0.5"
+    depends_on: [zookeeper]
+    ports: ["19092:19092"]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_HEAP_OPTS: "-Xmx256m -Xms128m"
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:19092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:29092,EXTERNAL://localhost:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+    networks: [app-network]
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    mem_limit: 256m
+    cpus: "0.3"
+    ports: ["8085:8085"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: kafka1:29092
+    depends_on: [kafka1]
+    networks: [app-network]
+
+  # 👇 имя сервиса = postgres_db (как в вашей строке подключения)
+  postgres_db:
+    image: postgres:15
+    mem_limit: 256m
+    cpus: "0.3"
+    restart: always
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ping_db
+      POSTGRES_INITDB_ARGS: --encoding=UTF-8
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ping_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [app-network]
+
+  # 👇 имя сервиса = clickhouse_db (как в вашем коде)
+  clickhouse_db:
+    image: clickhouse/clickhouse-server:23.8
+    mem_limit: 512m
+    cpus: "0.5"
+    restart: always
+    ports:
+      - "9000:9000"   # Native protocol
+      - "8123:8123"   # HTTP interface
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD:            # пустой пароль
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_log:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [app-network]
+
+  redis:
+    image: redis:7-alpine
+    mem_limit: 128m
+    cpus: "0.2"
+    ports: ["6379:6379"]
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [app-network]
+
+  auth_service:
+    build: ./backend/auth
+    mem_limit: 256m
+    cpus: "0.3"
+    ports: ["8081:8081"]
+    environment:
+      - DB_URL=postgres_db:5432
+      - DB_NAME=ping_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=hackathon_secret_key_2024
+      - JWT_EXPIRY=24
+    depends_on:
+      - postgres_db
+      - redis
+    networks: [app-network]
+
+  # ваш db_service уже подключается к postgres_db и clickhouse_db
+  db_service:
+    build: ./backend/db_service
+    mem_limit: 256m
+    cpus: "0.3"
+    ports: ["8083:8083"]
+    environment:
+      - PSQL_HOST=postgres_db        # можно оставить — код их не читает, не мешает
+      - PSQL_PORT=5432
+      - PSQL_USER=postgres
+      - PSQL_PASSWORD=postgres
+      - PSQL_DBNAME=ping_db
+      - CLICKHOUSE_HOST=clickhouse_db
+      - CLICKHOUSE_PORT=9000
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_DB=default
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      clickhouse_db:
+        condition: service_healthy
+    networks: [app-network]
+
+  ping_service:
+    build: ./backend/ping_service
+    mem_limit: 256m
+    cpus: "0.3"
+    ports: ["8082:8082"]
+    environment:
+      - DB_SERVICE_URL=http://db_service:8083
+      - KAFKA_BROKER=kafka1:29092
+    depends_on:
+      - db_service
+      - kafka1
+    networks: [app-network]
+
+  api_service:
+    build: ./backend/api_service
+    mem_limit: 256m
+    cpus: "0.3"
+    ports: ["8080:8080"]
+    environment:
+      - DB_SERVICE_URL=http://db_service:8083
+      - AUTH_SERVICE_URL=http://auth_service:8081
+      - PING_SERVICE_URL=http://ping_service:8082
+      - KAFKA_BROKER=kafka1:29092
+    depends_on:
+      - postgres_db
+      - clickhouse_db
+      - kafka1
+      - db_service
+      - auth_service
+      - ping_service
+    networks: [app-network]
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  clickhouse_log:
+
+networks:
+  app-network:
+    driver: bridge

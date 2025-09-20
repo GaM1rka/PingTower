@@ -3,6 +3,8 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -11,15 +13,15 @@ import (
 )
 
 var httpClient = &http.Client{
-	Timeout: 10 * time.Second,
+	Timeout: 15 * time.Second,
 	Transport: &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
-			Timeout:   3 * time.Second,
+			Timeout:   5 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		TLSHandshakeTimeout:   3 * time.Second,
-		ResponseHeaderTimeout: 5 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		IdleConnTimeout:       90 * time.Second,
 	},
@@ -51,7 +53,7 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	target := req.Site
-	if _, err := url.ParseRequestURI(target); err != nil || (!hasScheme(target)) {
+	if _, err := url.ParseRequestURI(target); err != nil || !hasScheme(target) {
 		target = "https://" + req.Site
 	}
 	u, err := url.Parse(target)
@@ -60,7 +62,7 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 	defer cancel()
 
 	pingTime := time.Now().UTC()
@@ -74,19 +76,26 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	resp, err := httpClient.Do(reqHTTP)
 	elapsed := time.Since(start)
+
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, models.PingResponse{
+		log.Printf("ping error for %s: %v", u.String(), err)
+		// Возвращаем 200, но помечаем фейл через response_time=-1 и error
+		writeJSON(w, http.StatusOK, models.PingResponse{
 			PingTime:     pingTime.Format(time.RFC3339Nano),
 			ResponseTime: -1,
+			Error:        err.Error(),
 		})
 		return
 	}
 	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
 
 	if resp.StatusCode >= 400 {
-		writeJSON(w, http.StatusBadGateway, models.PingResponse{
+		log.Printf("ping non-2xx for %s: %d", u.String(), resp.StatusCode)
+		writeJSON(w, http.StatusOK, models.PingResponse{
 			PingTime:     pingTime.Format(time.RFC3339Nano),
-			ResponseTime: elapsed.Milliseconds(),
+			ResponseTime: -1,
+			Error:        "http status " + resp.Status,
 		})
 		return
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"api_service/configs"
 	"api_service/internal"
+	"encoding/json"
 	"net/http"
 )
 
@@ -34,17 +35,34 @@ func main() {
 	configs.Configure()
 
 	handler := internal.NewHandler()
-	wrappedHandlerAuth := enableCORS(loggingMiddleware(handler.AuthHandler))
 
-	http.HandleFunc("/register", wrappedHandlerAuth)
-	http.HandleFunc("/login")
-	http.HandleFunc("/checker/") // проверять id пользователя по jwt. Возвращает инфу по id пользователя и id сайта инфу по нему
-	http.HandleFunc("/checkers") // GET Возвращает по id пользователя все url и их последний статус(работает или нет).
-	http.HandleFunc("/checkers") // POST добавляет для пользователя сайт для мониторинга.
+	// Обертки для middleware
+	wrappedRegister := enableCORS(loggingMiddleware(handler.AuthHandler))
+	wrappedLogin := enableCORS(loggingMiddleware(handler.AuthHandler))
+	wrappedChecker := enableCORS(loggingMiddleware(handler.CheckerHandler))
+	wrappedCheckers := enableCORS(loggingMiddleware(handler.CheckersHandler))
+	wrappedPingAll := enableCORS(loggingMiddleware(handler.PingAllHandler))
+
+	// Регистрируем все обработчики
+	http.HandleFunc("/register", wrappedRegister)
+	http.HandleFunc("/login", wrappedLogin)
+	http.HandleFunc("/checker/", wrappedChecker)
+	http.HandleFunc("/checkers", wrappedCheckers)
+	http.HandleFunc("/pingAll", wrappedPingAll)
+
+	// Добавляем health check endpoint
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
+
+	configs.APILogger.Println("API Service starting on :8080")
+
+	go configs.StartCronScheduler("http://localhost:8080")
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
-		panic(err)
+		configs.APILogger.Panic("Error starting server:", err)
 	}
-	go configs.StartCronScheduler("http://localhost:8080") // Потом поменять для виртуальной машины.
 }
