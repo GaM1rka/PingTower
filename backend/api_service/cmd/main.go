@@ -36,9 +36,15 @@ func main() {
 	handler := internal.NewHandler()
 	wrappedHandlerAuth := enableCORS(loggingMiddleware(handler.AuthHandler))
 
-	http.HandleFunc("/authorize", wrappedHandlerAuth)
+	http.HandleFunc("/register", wrappedHandlerAuth)
+	http.HandleFunc("/login")
+	http.HandleFunc("/checker/") // проверять id пользователя по jwt. Возвращает инфу по id пользователя и id сайта инфу по нему
+	http.HandleFunc("/checkers") // GET Возвращает по id пользователя все url и их последний статус(работает или нет).
+	http.HandleFunc("/checkers") // POST добавляет для пользователя сайт для мониторинга.
+
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic(err)
 	}
+	go configs.StartCronScheduler("http://localhost:8080") // Потом поменять для виртуальной машины.
 }
