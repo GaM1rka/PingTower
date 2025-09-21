@@ -21,7 +21,6 @@ function App() {
     <>
       <AppBar/>
       <Createchecker></Createchecker>
-      <Checker id={1} url="https://example.com" status={'ok'} />
       <div className='centdiv'>
       {Array.isArray(checkers) && checkers.length > 0 ? (
         checkers.map(checker => (
