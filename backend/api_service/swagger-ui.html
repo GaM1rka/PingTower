@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PingTower API Documentation</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4/swagger-ui.css" />
+    <style>
+        html {
+            box-sizing: border-box;
+            overflow: -moz-scrollbars-vertical;
+            overflow-y: scroll;
+        }
+        *,
+        *:before,
+        *:after {
+            box-sizing: inherit;
+        }
+        body {
+            margin:0;
+            background: #fafafa;
+        }
+        .topbar {
+            background-color: #2b3a42;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+        }
+        .topbar-wrapper {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        .topbar-logo {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+        }
+        .topbar-logo__img {
+            width: 30px;
+            height: 30px;
+            background-color: #fff;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .topbar-logo__title {
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .download-url-wrapper {
+            display: flex;
+            align-items: center;
+            margin-left: auto;
+        }
+        .download-url-wrapper label {
+            color: #fff;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <div class="topbar-wrapper">
+        <div class="topbar-logo">
+            <div class="topbar-logo__img"></div>
+            <div class="topbar-logo__title">PingTower API</div>
+        </div>
+    </div>
+</div>
+<div id="swagger-ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-bundle.js"></script>
+<script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-standalone-preset.js"></script>
+<script>
+    window.onload = function() {
+        // Begin Swagger UI call region
+        const ui = SwaggerUIBundle({
+            url: "/swagger/spec",
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+            ],
+            plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+            ],
+            layout: "StandaloneLayout"
+        });
+        // End Swagger UI call region
+
+        window.ui = ui;
+    };
+</script>
+</body>
+</html>

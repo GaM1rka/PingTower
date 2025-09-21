@@ -1,0 +1,685 @@
+openapi: 3.0.3
+info:
+  title: PingTower Microservices API
+  description: |
+    Полная документация всех микросервисов системы мониторинга сайтов
+    
+    ## Архитектура микросервисов
+    
+    ### 🌐 API Service (8080) - Gateway
+    Главный сервис, точка входа для клиентов
+    
+    ### 🔐 Auth Service (8081) - Авторизация  
+    JWT токены, аутентификация и авторизация
+    
+    ### 📡 Ping Service (8082) - Мониторинг
+    Проверка доступности сайтов
+    
+    ### 🗄️ DB Service (8083) - База данных
+    Управление данными пользователей и логами
+    
+    ### 📧 Notification Service (8084) - Уведомления
+    Email уведомления через Kafka
+    
+    ## Использование
+    1. Зарегистрируйтесь через API Service (8080)
+    2. Получите JWT токен при логине
+    3. Добавьте сайты для мониторинга
+    4. Запустите проверку всех сайтов
+    5. Получайте email уведомления при сбоях
+    
+  version: 1.0.0
+  contact:
+    name: PingTower Team
+    
+servers:
+  - url: http://localhost:8080
+    description: API Service - Main Gateway
+  - url: http://localhost:8081  
+    description: Auth Service - JWT Authentication
+  - url: http://localhost:8082
+    description: Ping Service - Site Monitoring
+  - url: http://localhost:8083
+    description: DB Service - Database Operations
+  - url: http://localhost:8084
+    description: Notification Service - Email Alerts
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ==================== API SERVICE (8080) ====================
+  /health:
+    get:
+      summary: Проверка состояния API Gateway
+      tags: [API Service]
+      servers:
+        - url: http://localhost:8080
+      security: []
+      responses:
+        '200':
+          description: API работает нормально
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+                    
+  /register:
+    post:
+      summary: Регистрация нового пользователя
+      tags: [API Service]
+      servers:
+        - url: http://localhost:8080
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Пользователь уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /login:
+    post:
+      summary: Вход в систему
+      tags: [API Service]
+      servers:
+        - url: http://localhost:8080
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /checkers:
+    get:
+      summary: Получить список всех проверок пользователя
+      tags: [API Service]
+      servers:
+        - url: http://localhost:8080
+      responses:
+        '200':
+          description: Список проверок
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PingLog'
+        '401':
+          description: Требуется авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                
+    post:
+      summary: Добавить новую проверку сайта
+      tags: [API Service]
+      servers:
+        - url: http://localhost:8080
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddSiteRequest'
+      responses:
+        '201':
+          description: Проверка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Требуется авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /checker/{id}:
+    get:
+      summary: Получить логи конкретного сайта
+      tags: [API Service]
+      servers:
+        - url: http://localhost:8080
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID сайта
+          example: 1
+      responses:
+        '200':
+          description: Логи сайта
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PingLog'
+        '400':
+          description: Некорректный ID сайта
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Требуется авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Сайт не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pingAll:
+    post:
+      summary: Запустить проверку всех сайтов
+      tags: [API Service]
+      servers:
+        - url: http://localhost:8080
+      responses:
+        '200':
+          description: Проверка запущена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingAllResponse'
+        '401':
+          description: Требуется авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== AUTH SERVICE (8081) ====================
+  /generate:
+    post:
+      summary: Генерация JWT токенов
+      tags: [Auth Service]
+      servers:
+        - url: http://localhost:8081
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Токены созданы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /validate:
+    post:
+      summary: Проверка JWT токена
+      tags: [Auth Service]
+      servers:
+        - url: http://localhost:8081
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateRequest'
+      parameters:
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+            example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: JWT токен в заголовке (альтернатива телу запроса)
+      responses:
+        '200':
+          description: Результат проверки токена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateResponse'
+
+  /refresh:
+    post:
+      summary: Обновление токенов
+      tags: [Auth Service]
+      servers:
+        - url: http://localhost:8081
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Токены обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Неверный refresh токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== PING SERVICE (8082) ====================
+  /ping:
+    post:
+      summary: Проверка доступности сайта
+      tags: [Ping Service]
+      servers:
+        - url: http://localhost:8082
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PingRequest'
+      responses:
+        '200':
+          description: Результат проверки сайта
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== DB SERVICE (8083) ====================
+  /user:
+    post:
+      summary: Создать пользователя
+      tags: [DB Service]
+      servers:
+        - url: http://localhost:8083
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    get:
+      summary: Получить пользователя по email
+      tags: [DB Service]
+      servers:
+        - url: http://localhost:8083
+      security: []
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+          example: "user@example.com"
+      responses:
+        '200':
+          description: Данные пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Email не указан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== NOTIFICATION SERVICE (8084) ====================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT токен полученный через /login или /generate"
+
+  schemas:
+    AuthRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+          description: "Email адрес пользователя"
+        password:
+          type: string
+          minLength: 6
+          example: "password123"
+          description: "Пароль (минимум 6 символов)"
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: "JWT access токен"
+        refresh_token:
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: "Refresh токен для обновления"
+        id:
+          type: integer
+          example: 1
+          description: "ID пользователя"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+          description: "Email пользователя"
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refresh_token:
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    ValidateRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: "JWT токен для проверки"
+
+    ValidateResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          example: true
+          description: "Валиден ли токен"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+          description: "Email из токена (если валиден)"
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: "Refresh токен"
+
+    AddSiteRequest:
+      type: object
+      required: [site]
+      properties:
+        site:
+          type: string
+          format: uri
+          example: "https://example.com"
+          description: "URL сайта для мониторинга"
+        time:
+          type: integer
+          minimum: 60
+          example: 300
+          description: "Интервал проверки в секундах (опционально)"
+
+    PingRequest:
+      type: object
+      required: [site]
+      properties:
+        site:
+          type: string
+          example: "https://example.com"
+          description: "URL сайта для проверки"
+
+    PingResponse:
+      type: object
+      properties:
+        ping_time:
+          type: string
+          format: date-time
+          example: "2025-09-21T10:30:00Z"
+          description: "Время проверки"
+        response_time:
+          type: integer
+          example: 250
+          description: "Время ответа в миллисекундах (-1 = ошибка)"
+        error:
+          type: string
+          example: "connection timeout"
+          description: "Описание ошибки (если есть)"
+
+    PingLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        req_time:
+          type: string
+          format: date-time
+          example: "2025-09-21T10:30:00Z"
+        resp_time:
+          type: integer
+          example: 250
+          description: "Время ответа в миллисекундах"
+        status:
+          type: string
+          enum: [initial, success, failed]
+          example: "success"
+        site:
+          type: string
+          example: "https://example.com"
+
+    CreateUserRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          example: "password123"
+
+    CreateUserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+          description: "ID созданного пользователя"
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+
+    PingAllResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Ping completed"
+        successful:
+          type: integer
+          example: 5
+          description: "Количество успешных проверок"
+        failed:
+          type: integer
+          example: 1
+          description: "Количество неудачных проверок"
+        total:
+          type: integer
+          example: 6
+          description: "Общее количество проверок"
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Site and check added successfully"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        service:
+          type: string
+          example: "notification_service"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid request data"
+        message:
+          type: string
+          example: "The provided email is already registered"
+
+    NotificationKafka:
+      type: object
+      description: "Структура сообщения в Kafka топике notification-alerts"
+      required: [email, site, time]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+          description: "Email получателя уведомления"
+        site:
+          type: string
+          example: "https://example.com"
+          description: "URL проблемного сайта"
+        time:
+          type: string
+          format: date-time
+          example: "2025-09-21T10:30:00Z"
+          description: "Время возникновения проблемы"
+
+tags:
+  - name: API Service
+    description: "🌐 Главный сервис (8080) - точка входа для клиентов"
+  - name: Auth Service
+    description: "🔐 Сервис авторизации (8081) - JWT токены"
+  - name: Ping Service
+    description: "📡 Сервис мониторинга (8082) - проверка сайтов"
+  - name: DB Service
+    description: "🗄️ Сервис БД (8083) - управление данными"
+  - name: Notification Service
+    description: "📧 Сервис уведомлений (8084) - email через Kafka"

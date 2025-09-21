@@ -37,14 +37,13 @@ services:
     image: provectuslabs/kafka-ui:latest
     mem_limit: 256m
     cpus: "0.3"
-    ports: ["8085:8085"]
+    ports: ["8085:8080"]
     environment:
       KAFKA_CLUSTERS_0_NAME: local-kafka
       KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: kafka1:29092
     depends_on: [kafka1]
     networks: [app-network]
 
-  # 👇 имя сервиса = postgres_db (как в вашей строке подключения)
   postgres_db:
     image: postgres:15
     mem_limit: 256m
@@ -66,7 +65,6 @@ services:
       retries: 20
     networks: [app-network]
 
-  # 👇 имя сервиса = clickhouse_db (как в вашем коде)
   clickhouse_db:
     image: clickhouse/clickhouse-server:23.8
     mem_limit: 512m
@@ -122,7 +120,6 @@ services:
       - redis
     networks: [app-network]
 
-  # ваш db_service уже подключается к postgres_db и clickhouse_db
   db_service:
     build: ./backend/db_service
     mem_limit: 256m
@@ -176,6 +173,27 @@ services:
       - db_service
       - auth_service
       - ping_service
+    networks: [app-network]
+
+  notification_service:
+    build: ./backend/notification_service
+    mem_limit: 256m
+    cpus: "0.3"
+    ports: ["8084:8084"]
+    environment:
+      MAILERSEND_API_KEY: mlsn.56553fafd04e982332a4ef9003ef6fc0345de9fcea0473122e482322f2b83938
+      FROM_EMAIL: MS_mIKkkJ@test-xkjn41m6jz04z781.mlsender.net
+      FROM_NAME: PingTower Alert System
+      SMTP_HOST: smtp.mailersend.net
+      SMTP_PORT: 587
+      SMTP_USERNAME: MS_mIKkkJ@test-xkjn41m6jz04z781.mlsender.net
+      SMTP_PASSWORD: mssp.SFuGnXj.zr6ke4n0z39lon12.CtzsE9m
+      KAFKA_BROKERS: kafka1:29092
+      KAFKA_TOPIC: notification-alerts
+      KAFKA_CONSUMER_GROUP: notification-service
+      HEALTH_PORT: 8084
+    depends_on:
+      - kafka1
     networks: [app-network]
 
 volumes:
