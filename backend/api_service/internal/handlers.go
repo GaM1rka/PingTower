@@ -193,29 +193,29 @@ func (h *Handler) PingAllHandler(resp http.ResponseWriter, req *http.Request) {
 				continue
 			}
 
-			// Сохраняем лог
-			err = h.savePingLog(userSite.UserID, site.URL, pingResult.ResponseTime, pingResult.Status)
-			if err != nil {
+			// сохраняем лог (в ClickHouse попадёт resp_time и status=ok|bad)
+			if err := h.savePingLog(userSite.UserID, site.URL, pingResult.ResponseTime, pingResult.Status); err != nil {
 				configs.APILogger.Printf("save ping log failed: %v", err)
 				failCount++
 				continue
 			}
 
-			// Если статус нерабочий, отправляем уведомление
-			if pingResult.Status != "success" && pingResult.Status != "ok" {
-				userEmail, err := h.getUserEmail(userSite.UserID)
-				if err != nil {
-					configs.APILogger.Printf("get user email failed: %v", err)
-					continue
-				}
-
-				err = configs.SendKafkaNotification(userEmail, site.URL, pingResult.ResponseTime)
-				if err != nil {
-					configs.APILogger.Printf("send kafka notification failed: %v", err)
-				}
+			// считаем метрики
+			if pingResult.Status == "bad" {
+				failCount++
+			} else {
+				successCount++
 			}
 
-			successCount++
+			// уведомления только если «плохо»
+			if pingResult.Status == "bad" {
+				userEmail, err := h.getUserEmail(userSite.UserID)
+				if err == nil {
+					_ = configs.SendKafkaNotification(userEmail, site.URL, pingResult.ResponseTime)
+				} else {
+					configs.APILogger.Printf("get user email failed: %v", err)
+				}
+			}
 		}
 	}
 
@@ -498,9 +498,7 @@ func (h *Handler) getUserEmail(userID int) (string, error) {
 	return result.Email, nil
 }
 
-// internal/handlers.go
 func (h *Handler) pingSite(url string) (*PingResult, error) {
-	// логируем
 	configs.APILogger.Printf("ping site: %s", url)
 
 	pingRequest := models.PingRequest{Site: url}
@@ -530,23 +528,19 @@ func (h *Handler) pingSite(url string) (*PingResult, error) {
 		return nil, fmt.Errorf("ping service returned status: %d (%s)", resp.StatusCode, strings.TrimSpace(string(b)))
 	}
 
-	var pingResponse models.PingResponse
-	if err := json.NewDecoder(resp.Body).Decode(&pingResponse); err != nil {
+	var pr models.PingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
 		return nil, fmt.Errorf("failed to parse ping response: %v", err)
 	}
 
-	if pingResponse.ResponseTime < 0 {
-		return nil, fmt.Errorf("ping service signaled failure (response_time=%d)", pingResponse.ResponseTime)
-	}
-
-	// ping_service не шлёт status — подставим "ok" по умолчанию
-	status := pingResponse.Status
-	if status == "" {
-		status = "ok"
+	// Маппим результат: отрицательное время = "bad", иначе "ok"
+	status := "ok"
+	if pr.ResponseTime < 0 {
+		status = "bad"
 	}
 
 	return &PingResult{
-		ResponseTime: pingResponse.ResponseTime,
+		ResponseTime: pr.ResponseTime,
 		Status:       status,
 	}, nil
 }
