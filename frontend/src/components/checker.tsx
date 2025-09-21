@@ -27,10 +27,9 @@ export default function Checker({ id, url, status: initialStatus }: CheckerProps
 
   return (
     <div className={`checker ${expanded ? "expanded" : ""}`}>
-      <div className="checker__header">
         <button
           type="button"
-          className="checker__toggle"
+          className="input in3"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
           aria-controls={`checker-body-${id}`}
@@ -39,11 +38,12 @@ export default function Checker({ id, url, status: initialStatus }: CheckerProps
         </button>
 
       {/* поменять потом или накидать стилей */}
+      <div className="expandedInfo">
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="checker__link"
+          className="link"
           onClick={(e) => e.stopPropagation()}
         >
           {url}
@@ -57,7 +57,7 @@ export default function Checker({ id, url, status: initialStatus }: CheckerProps
         >
           {latestStatus ?? "initial"}
         </span>
-      </div>
+      {/* </div> */}
 
       {expanded && (
         <div id={`checker-body-${id}`} className="checker__body">
@@ -88,6 +88,7 @@ export default function Checker({ id, url, status: initialStatus }: CheckerProps
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
