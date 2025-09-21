@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Registration from "./registration";
 
 export default function AppBar() {
+    const [menu, setMenu] = useState(false);
     const [showHello, setShowHello] = useState(false);
 
   useEffect(() => {
@@ -9,15 +10,19 @@ export default function AppBar() {
     if (value) setShowHello(true);
   }, []);
 
-  
-    return (
-    <div className="appbar">
-      {showHello ? (
-        <h1>Привет, {localStorage.getItem("email")}</h1>
-      ) : (
-        <Registration />
-      )}
-    </div>
+    return(
+        <div className="appbar">
+            <div className="divapp">
+                {menu && (
+                <>
+                <Registration/>
+                </>
+            )}
+            <div className="menu" onClick={() => setMenu(!menu)}>
+            menu
+            </div>
+            </div>
+        </div>
     );
 }
 

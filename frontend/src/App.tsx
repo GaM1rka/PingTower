@@ -4,22 +4,21 @@ import AppBar from './components/appbar'
 import Checker from './components/checker'
 import Createchecker from './components/createChecker'
 import { ToastContainer } from 'react-toastify'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+
 function App() {
 
-  const { checkers } = useCheckers();
-  const [overlay, setOverlay] = useState(true);
+  const { checkers, refresh } = useCheckers();
 
   useEffect(() => {
-      const value = localStorage.getItem("email");
-      if (value) setOverlay(false);
-    }, []);
+    const interval = setInterval(() => {
+      refresh();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [refresh]);
 
   return (
     <>
-      {overlay && (
-        <div className='overlay' />
-      )}
       <AppBar/>
       <Createchecker></Createchecker>
       <Checker id={1} url="https://example.com" status={'ok'} />
