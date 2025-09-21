@@ -16,6 +16,7 @@ function formatTime(iso: string) {
   }
 }
 
+
 export default function Checker({ id, url, status: initialStatus }: CheckerProps) {
   const [expanded, setExpanded] = useState(false);
   const { checker: logs, loading, error } = useChecker(id);
@@ -26,7 +27,7 @@ export default function Checker({ id, url, status: initialStatus }: CheckerProps
   }, [logs, initialStatus]);
 
   return (
-    <div className={`checker ${expanded ? "expanded" : ""}`}>
+    <div className={`checker ${expanded ? "expanded" : ""} ${latestStatus}`}>
         <button
           type="button"
           className="input in3"
@@ -55,7 +56,7 @@ export default function Checker({ id, url, status: initialStatus }: CheckerProps
           }`}
           title={`status: ${latestStatus ?? "initial"}`}
         >
-          {latestStatus ?? "initial"}
+          status: {latestStatus ?? "initial"}
         </span>
       {/* </div> */}
 
