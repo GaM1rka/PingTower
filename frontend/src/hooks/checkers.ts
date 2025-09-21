@@ -76,9 +76,18 @@ export const useChecker = (id?: number) => {
 export const createChecker = async ({ site, MMtime }: CreateCheckerPayload) => {
   const { show } = useToast();
   // Validate a bit on the client:
+  try {
+  const token = localStorage.getItem("token");
+  console.log(token)
+  if (!token) {
+    throw new Error("You need to registrate!")};
   if (!site) throw new Error("Site is required");
+
   const res = await API.post("/checkers", { site, MMtime });
-  show("Checker created!", "success")
-  console.log('success!')
-  return res.data; // let caller update UI or re-fetch; don't reload the page
+  show("Checker created!", "success");
+  console.log("success!");
+  return res.data;
+} catch (e) {
+  show(`${e}`, "error");
+}
 };
