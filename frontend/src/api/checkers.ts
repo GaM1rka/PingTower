@@ -75,8 +75,6 @@ export const useChecker = (id?: number) => {
 export const createChecker = async ({ site, MMtime }: CreateCheckerPayload) => {
   // Validate a bit on the client:
   if (!site) throw new Error("Site is required");
-  if (typeof MMtime !== "number" || MMtime <= 0) throw new Error("Time must be a positive number (seconds)");
-
   const res = await API.post("/checkers", { site, MMtime });
   return res.data; // let caller update UI or re-fetch; don't reload the page
 };
