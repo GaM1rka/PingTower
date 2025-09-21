@@ -222,7 +222,7 @@ func (s *Storage) GetSiteLogs(userID, siteID int) ([]PingLog, error) {
 }
 
 func (s *Storage) GetAllUserLogs(userID int) ([]PingLog, error) {
-	// 1) Собираем мапу URL -> site_id из Postgres
+	// URL -> site_id (чтобы вернуть id сайта)
 	siteIDByURL := map[string]int{}
 	rs, err := s.psql.Query(`SELECT id, site FROM user_sites WHERE user_id = $1`, userID)
 	if err != nil {
@@ -239,26 +239,46 @@ func (s *Storage) GetAllUserLogs(userID int) ([]PingLog, error) {
 	}
 	rs.Close()
 
-	// 2) Читаем логи из ClickHouse
 	rows, err := s.ch.Query(`
-        SELECT req_time, resp_time, status, site
-        FROM ping_logs
-        WHERE user_id = ?
-        ORDER BY site, req_time DESC
-    `, userID)
+        WITH
+        latest_non_initial AS (
+            SELECT
+                site,
+                argMax(req_time,  req_time) AS req_time,
+                argMax(resp_time, req_time) AS resp_time,
+                argMax(status,    req_time) AS status
+            FROM ping_logs
+            WHERE user_id = ? AND status != 'initial'
+            GROUP BY site
+        ),
+        only_initial AS (
+            SELECT
+                site,
+                argMax(req_time,  req_time) AS req_time,
+                argMax(resp_time, req_time) AS resp_time,
+                argMax(status,    req_time) AS status
+            FROM ping_logs
+            WHERE user_id = ? AND status = 'initial'
+              AND site NOT IN (SELECT site FROM latest_non_initial)
+            GROUP BY site
+        )
+        SELECT req_time, resp_time, status, site FROM latest_non_initial
+        UNION ALL
+        SELECT req_time, resp_time, status, site FROM only_initial
+        ORDER BY site
+    `, userID, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	// 3) Маппим и подставляем SiteID по URL
 	var logs []PingLog
 	for rows.Next() {
 		var log PingLog
 		if err := rows.Scan(&log.ReqTime, &log.RespTime, &log.Status, &log.Site); err != nil {
 			return nil, err
 		}
-		log.SiteID = siteIDByURL[log.Site] // будет 0, если сайта нет в user_sites
+		log.SiteID = siteIDByURL[log.Site] // 0, если сайт удалили из user_sites
 		logs = append(logs, log)
 	}
 	return logs, nil
