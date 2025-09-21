@@ -73,7 +73,7 @@ services:
 
   clickhouse_db:
     image: clickhouse/clickhouse-server:23.8
-    mem_limit: 512m
+    mem_limit: 2g
     cpus: "0.5"
     restart: always
     ports:
