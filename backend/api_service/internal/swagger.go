@@ -39,8 +39,11 @@ func (s *SwaggerHandler) ServeSwaggerSpec(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	// Set the appropriate content type for YAML
+	// Set headers to prevent caching
 	w.Header().Set("Content-Type", "application/x-yaml")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 	
 	// Serve the swagger.yaml file
 	http.ServeFile(w, r, swaggerPath)
@@ -70,8 +73,11 @@ func (s *SwaggerHandler) ServeSwaggerUI(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Set the appropriate content type for HTML
+	// Set headers to prevent caching
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 	
 	// Serve the swagger-ui.html file
 	http.ServeFile(w, r, uiPath)
