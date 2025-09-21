@@ -9,7 +9,7 @@ const handleRegistration = async (email: string, password: string) => {
         const res = await API.post("/register", {email, password});
         console.log("registered");
         //нет апи, нет ответа. data.token может отличаться (поменять везде)
-        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("token", res.data.access_token);
     }
     catch (e) {
         console.error(`ERROR: ${e}`);
