@@ -239,34 +239,14 @@ func (s *Storage) GetAllUserLogs(userID int) ([]PingLog, error) {
 	}
 	rs.Close()
 
+	// берём "первую" (последнюю по времени) запись на каждый site
 	rows, err := s.ch.Query(`
-        WITH
-        latest_non_initial AS (
-            SELECT
-                site,
-                argMax(req_time,  req_time) AS req_time,
-                argMax(resp_time, req_time) AS resp_time,
-                argMax(status,    req_time) AS status
-            FROM ping_logs
-            WHERE user_id = ? AND status != 'initial'
-            GROUP BY site
-        ),
-        only_initial AS (
-            SELECT
-                site,
-                argMax(req_time,  req_time) AS req_time,
-                argMax(resp_time, req_time) AS resp_time,
-                argMax(status,    req_time) AS status
-            FROM ping_logs
-            WHERE user_id = ? AND status = 'initial'
-              AND site NOT IN (SELECT site FROM latest_non_initial)
-            GROUP BY site
-        )
-        SELECT req_time, resp_time, status, site FROM latest_non_initial
-        UNION ALL
-        SELECT req_time, resp_time, status, site FROM only_initial
-        ORDER BY site
-    `, userID, userID)
+        SELECT req_time, resp_time, status, site
+        FROM ping_logs
+        WHERE user_id = ?
+        ORDER BY site ASC, req_time DESC
+        LIMIT 1 BY site
+    `, userID)
 	if err != nil {
 		return nil, err
 	}
