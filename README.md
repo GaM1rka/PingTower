@@ -70,7 +70,7 @@ git clone <repository-url>
 cd PingTower
 
 # Запустить все сервисы
-docker-compose up -d
+docker-compose up -d --build
 
 # Дождаться загрузки (1-2 минуты)
 docker-compose logs -f api_service
