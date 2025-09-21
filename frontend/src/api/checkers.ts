@@ -76,5 +76,6 @@ export const createChecker = async ({ site, MMtime }: CreateCheckerPayload) => {
   // Validate a bit on the client:
   if (!site) throw new Error("Site is required");
   const res = await API.post("/checkers", { site, MMtime });
+  console.log('success!')
   return res.data; // let caller update UI or re-fetch; don't reload the page
 };

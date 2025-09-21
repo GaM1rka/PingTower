@@ -6,7 +6,9 @@ import Createchecker from './components/createChecker'
 
 function App() {
 
-  const checkers = useCheckers().checkers.map(checker =>
+  const { checkers } = useCheckers();
+
+   checkers.map(checker =>
     <Checker id={checker.id} url={checker.site} status={checker.status} />
   )
   return (
