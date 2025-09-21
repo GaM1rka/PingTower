@@ -44,29 +44,25 @@ func main() {
 	wrappedCheckers := enableCORS(loggingMiddleware(handler.CheckersHandler))
 	wrappedPingAll := enableCORS(loggingMiddleware(handler.PingAllHandler))
 	
-	// Обертки для Swagger
 	wrappedSwaggerSpec := enableCORS(loggingMiddleware(swaggerHandler.ServeSwaggerSpec))
 	wrappedSwaggerUI := enableCORS(loggingMiddleware(swaggerHandler.ServeSwaggerUI))
 
-	// Регистрируем все обработчики
 	http.HandleFunc("/register", wrappedRegister)
 	http.HandleFunc("/login", wrappedLogin)
 	http.HandleFunc("/checker/", wrappedChecker)
 	http.HandleFunc("/checkers", wrappedCheckers)
 	http.HandleFunc("/pingAll", wrappedPingAll)
 
-	// Добавляем health check endpoint
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
-	// Serve Swagger endpoints
+	// Обработчик для сваггера
 	http.HandleFunc("/swagger/spec", wrappedSwaggerSpec)
 	http.HandleFunc("/swagger/", wrappedSwaggerUI)
 	http.HandleFunc("/swagger", func(w http.ResponseWriter, r *http.Request) {
-		// Redirect /swagger to /swagger/
 		http.Redirect(w, r, "/swagger/", http.StatusMovedPermanently)
 	})
 

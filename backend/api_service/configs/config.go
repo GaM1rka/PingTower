@@ -33,7 +33,7 @@ func Configure() {
 	// Инициализация Kafka writer
 	KafkaWriter = &kafka.Writer{
 		Addr:     kafka.TCP(KafkaAddr),
-		Topic:    "notify",
+		Topic:    "notification-alerts",
 		Balancer: &kafka.LeastBytes{},
 	}
 }
