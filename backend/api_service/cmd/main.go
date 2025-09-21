@@ -35,6 +35,7 @@ func main() {
 	configs.Configure()
 
 	handler := internal.NewHandler()
+	swaggerHandler := internal.NewSwaggerHandler()
 
 	// Обертки для middleware
 	wrappedRegister := enableCORS(loggingMiddleware(handler.AuthHandler))
@@ -42,6 +43,10 @@ func main() {
 	wrappedChecker := enableCORS(loggingMiddleware(handler.CheckerHandler))
 	wrappedCheckers := enableCORS(loggingMiddleware(handler.CheckersHandler))
 	wrappedPingAll := enableCORS(loggingMiddleware(handler.PingAllHandler))
+	
+	// Обертки для Swagger
+	wrappedSwaggerSpec := enableCORS(loggingMiddleware(swaggerHandler.ServeSwaggerSpec))
+	wrappedSwaggerUI := enableCORS(loggingMiddleware(swaggerHandler.ServeSwaggerUI))
 
 	// Регистрируем все обработчики
 	http.HandleFunc("/register", wrappedRegister)
@@ -55,6 +60,14 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
+
+	// Serve Swagger endpoints
+	http.HandleFunc("/swagger/spec", wrappedSwaggerSpec)
+	http.HandleFunc("/swagger/", wrappedSwaggerUI)
+	http.HandleFunc("/swagger", func(w http.ResponseWriter, r *http.Request) {
+		// Redirect /swagger to /swagger/
+		http.Redirect(w, r, "/swagger/", http.StatusMovedPermanently)
 	})
 
 	configs.APILogger.Println("API Service starting on :8080")

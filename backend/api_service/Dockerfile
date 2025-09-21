@@ -11,5 +11,7 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates && update-ca-certificates
 WORKDIR /app
 COPY --from=build /app/main /app/main
+COPY --from=build /app/swagger.yaml /app/swagger.yaml
+COPY --from=build /app/swagger-ui.html /app/swagger-ui.html
 EXPOSE 8080
 CMD ["/app/main"]
