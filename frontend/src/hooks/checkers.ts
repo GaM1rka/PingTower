@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import API from "./api";
+import { useToast } from "./toast";
 
 type CheckerLog = {
   id: number;         // site id
@@ -73,9 +74,11 @@ export const useChecker = (id?: number) => {
 };
 
 export const createChecker = async ({ site, MMtime }: CreateCheckerPayload) => {
+  const { show } = useToast();
   // Validate a bit on the client:
   if (!site) throw new Error("Site is required");
   const res = await API.post("/checkers", { site, MMtime });
+  show("Checker created!", "success")
   console.log('success!')
   return res.data; // let caller update UI or re-fetch; don't reload the page
 };
