@@ -154,3 +154,29 @@
   height: 80%;
   margin-right: 2%;
 }
+
+.centdiv {
+  display: flex;
+  justify-content: center;
+}
+
+.checker__table {
+  width: 100%;
+  border-collapse: collapse; /* чтобы не было двойных границ */
+  border-radius: 5px;
+  overflow: hidden; /* нужно, чтобы скругление сработало на содержимом */
+  background-color: white;
+  color: black;
+}
+
+.checker__table th,
+.checker__table td {
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.checker__table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}

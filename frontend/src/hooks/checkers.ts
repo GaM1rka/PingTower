@@ -43,7 +43,7 @@ export const useCheckers = () => {
 };
 
 export const useChecker = (id?: number) => {
-  const [checker, setChecker] = useState<CheckerLog[] | null>(null);
+  const [checker, setChecker] = useState<CheckerLog[] | null>([]);
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState<string | null>(null);
 
