@@ -22,14 +22,19 @@ function App() {
       <AppBar/>
       <Createchecker></Createchecker>
       <Checker id={1} url="https://example.com" status={'ok'} />
-      {checkers.map(checker => (
-        <Checker 
-        key={checker.id}
-        id={checker.id}
-        url={checker.site}
-        status={checker.status}
-        />
-      ))}
+      <div className='centdiv'>
+      {Array.isArray(checkers) && checkers.length > 0 ? (
+        checkers.map(checker => (
+          <Checker
+          key={checker.id}
+          id={checker.id}
+          url={checker.site}
+          status={checker.status}
+          />
+      ))) : (
+      <p>Your checkers will appear here!</p>
+      )}
+      </div>
       <ToastContainer
         position="bottom-right"
         autoClose={2000}

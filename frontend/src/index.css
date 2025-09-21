@@ -154,3 +154,8 @@
   height: 80%;
   margin-right: 2%;
 }
+
+.centdiv {
+  display: flex;
+  justify-content: center;
+}
