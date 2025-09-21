@@ -1,6 +1,11 @@
 version: '3.8'
 
 services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "8090:8090"
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     mem_limit: 256m
