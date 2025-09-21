@@ -8,9 +8,9 @@ function checkURL(URL: string) {
     return urlRegex.test(URL);
 }
 
-function create(URL:string,time:string) {
-    if (checkURL(URL)) {
-        createChecker(URL,time);
+function create(site:string,time:string) {
+    if (checkURL(site)) {
+        createChecker({site,time});
     } else {
         console.error("invalid URL")
     }
@@ -19,17 +19,15 @@ function create(URL:string,time:string) {
 export default function Createchecker() {
     const [URL, setEmail] = useState("");
     const [time, setPassword] = useState("");
-    const [open, setOpen] = useState(false);
     
     return (
     <>
     <div style={{ display: "flex" }}>
-    <div className="createChecker" onClick={() => setOpen(!open)}></div>
-    {open &&(<div className="createChecker expanded">
-      <input value={URL} onChange={(e) => setEmail(e.target.value)} />
-      <input value={time} type="time" onChange={(e) => setPassword(e.target.value)} />
-      <button onClick={() => create(URL, time)}>create checker</button>
-    </div>)}
+    <div className="createChecker">
+      <input placeholder="URL" className="input" value={URL} onChange={(e) => setEmail(e.target.value)} />
+      <input placeholder="Period" className="input" value={time} type="time" onChange={(e) => setPassword(e.target.value)} />
+      <button className="input" onClick={() => create(URL, time)}>create checker</button>
+    </div>
     </div>
     </>
   );

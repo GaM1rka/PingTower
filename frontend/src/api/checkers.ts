@@ -1,58 +1,82 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import API from "./api";
 
+type CheckerLog = {
+  id: number;         // site id
+  req_time: string;   // ISO string
+  resp_time: number;  // ms, can be -1
+  status: "ok" | "bad" | "initial";
+  site: string;       // url
+};
+
+type CreateCheckerPayload = {
+  site: string;
+  time: string; // seconds
+};
+
 export const useCheckers = () => {
-  const [checkers, setCheckers] = useState<any[]>([]);
+  const [checkers, setCheckers] = useState<CheckerLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const getCheckers = async () => {
+  const getCheckers = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await API.get("/checker");
+      setLoading(true);
+      setError(null);
+      const res = await API.get<CheckerLog[]>("/checkers", { signal });
       setCheckers(res.data);
     } catch (e: any) {
-      setError(e.message || "Error fetching checkers");
+      if (e.name === "CanceledError") return;
+      setError(e?.response?.data?.error ?? e.message ?? "Error fetching checkers");
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    getCheckers();
   }, []);
 
-  return { checkers, loading, error, refresh: getCheckers };
+  useEffect(() => {
+    const controller = new AbortController();
+    getCheckers(controller.signal);
+    return () => controller.abort();
+  }, [getCheckers]);
+
+  return { checkers, loading, error, refresh: () => getCheckers() };
 };
 
-export const useChecker = (id: number) => {
-  const [checker, setChecker] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+export const useChecker = (id?: number) => {
+  const [checker, setChecker] = useState<CheckerLog[] | null>(null);
+  const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState<string | null>(null);
 
-  const getChecker = async () => {
+  const getChecker = useCallback(async (signal?: AbortSignal) => {
+    if (!id) return;
     try {
-      const res = await API.get(`/checker/${id}`);
+      setLoading(true);
+      setError(null);
+      const res = await API.get<CheckerLog[]>(`/checker/${id}`, { signal });
       setChecker(res.data);
     } catch (e: any) {
-      setError(e.message || "Error fetching checker");
+      if (e.name === "CanceledError") return;
+      setError(e?.response?.data?.error ?? e.message ?? "Error fetching checker");
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    getChecker();
   }, [id]);
 
-  return { checker, loading, error, refresh: getChecker };
+  useEffect(() => {
+    if (!id) return;
+    const controller = new AbortController();
+    getChecker(controller.signal);
+    return () => controller.abort();
+  }, [id, getChecker]);
+
+  return { checker, loading, error, refresh: () => getChecker() };
 };
 
-export const createChecker = async (URL: string, time: string) => {
-  try {
-    await API.post(`/checker`, { URL, time });
-    console.log("added");
-    window.location.reload();
-  } catch (e: any) {
-    console.error(`ERROR: ${e}`);
-  }
+export const createChecker = async ({ site, time }: CreateCheckerPayload) => {
+  // Validate a bit on the client:
+  if (!site) throw new Error("Site is required");
+  if (typeof time !== "number" || time <= 0) throw new Error("Time must be a positive number (seconds)");
+
+  const res = await API.post("/checkers", { site, time });
+  return res.data; // let caller update UI or re-fetch; don't reload the page
 };
