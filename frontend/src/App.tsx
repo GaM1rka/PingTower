@@ -8,15 +8,19 @@ function App() {
 
   const { checkers } = useCheckers();
 
-   checkers.map(checker =>
-    <Checker id={checker.id} url={checker.site} status={checker.status} />
-  )
   return (
     <>
       <AppBar/>
       <Createchecker></Createchecker>
       <Checker id={1} url="https://example.com" status={'ok'} />
-      {checkers}
+      {checkers.map(checker => (
+        <Checker 
+        key={checker.id}
+        id={checker.id}
+        url={checker.site}
+        status={checker.status}
+        />
+      ))}
     </>
   )
 }
