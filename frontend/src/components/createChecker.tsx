@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createChecker } from "../hooks/checkers";
 import "../index.css"
+import { useToast } from "../hooks/toast";
 
 // function convertTime(time: string): number {
 //   const [hours, minutes] = time.split(':').map(Number);
@@ -14,10 +15,12 @@ function checkURL(URL: string) {
 }
 
 function create(site:string,time:string) {
+    const { show } = useToast();
     const MMtime: number = (time as unknown) as number ;
     if (checkURL(site)) {
         createChecker({site, MMtime});
     } else {
+        show("invalid URL", "error")
         console.error("invalid URL")
     }
 }
@@ -30,7 +33,7 @@ export default function Createchecker() {
     <>
     <div style={{ display: "flex" }}>
     <div className="createChecker">
-      <input placeholder="URL" className="input" value={URL} onChange={(e) => setEmail(e.target.value)} />
+      <input placeholder="URL (https://example.com)" className="input" value={URL} onChange={(e) => setEmail(e.target.value)} />
       <input placeholder="Period (in minutes)" min={1} className="input" value={time} type="number" onChange={(e) => setPassword(e.target.value)} />
       <button className="input" onClick={() => create(URL, time)}>create checker</button>
     </div>
