@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useChecker } from "../hooks/checkers";
 
 type CheckerProps = {
