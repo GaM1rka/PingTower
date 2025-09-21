@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createChecker } from "../api/checkers";
+import { createChecker } from "../hooks/checkers";
 import "../index.css"
 
 // function convertTime(time: string): number {

@@ -1,18 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Registration from "./registration";
 
 export default function AppBar() {
+    const [showHello, setShowHello] = useState(false);
 
-    const [menu, setMenu] = useState(false);
-    return(
-        <div className="appbar">
-            {menu && (
-                <Registration/>
-            )}
-            <div className="menu" onClick={() => setMenu(!menu)}>
-            menu
-            </div>
-        </div>
+  useEffect(() => {
+    const value = localStorage.getItem("email");
+    if (value) setShowHello(true);
+  }, []);
+
+  
+    return (
+    <div className="appbar">
+      {showHello ? (
+        <h1>Привет, {localStorage.getItem("email")}</h1>
+      ) : (
+        <Registration />
+      )}
+    </div>
     );
 }
 
