@@ -14,7 +14,7 @@ function checkURL(URL: string) {
 }
 
 function create(site:string,time:string) {
-    const MMtime = convertTime(time)
+    const MMtime: number = (time as unknown) as number ;
     if (checkURL(site)) {
         createChecker({site, MMtime});
     } else {
@@ -31,7 +31,7 @@ export default function Createchecker() {
     <div style={{ display: "flex" }}>
     <div className="createChecker">
       <input placeholder="URL" className="input" value={URL} onChange={(e) => setEmail(e.target.value)} />
-      <input placeholder="Period" className="input" value={time} type="time" onChange={(e) => setPassword(e.target.value)} />
+      <input placeholder="Period" className="input" value={time} type="number" onChange={(e) => setPassword(e.target.value)} />
       <button className="input" onClick={() => create(URL, time)}>create checker</button>
     </div>
     </div>
