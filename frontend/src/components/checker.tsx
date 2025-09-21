@@ -4,14 +4,12 @@ import { useChecker } from "../api/checkers";
 type CheckerProps = {
   id: number;
   url: string;
-  // status from parent is optional; we'll derive from logs if present
   status?: "ok" | "bad" | "initial";
 };
 
 function formatTime(iso: string) {
   try {
     const d = new Date(iso);
-    // show local readable time
     return d.toLocaleString();
   } catch {
     return iso;
@@ -40,6 +38,7 @@ export default function Checker({ id, url, status: initialStatus }: CheckerProps
           {expanded ? "close" : "open"}
         </button>
 
+      {/* поменять потом или накидать стилей */}
         <a
           href={url}
           target="_blank"

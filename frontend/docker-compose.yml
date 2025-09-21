@@ -4,15 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"     # Vite dev server
-      - "24678:24678"   # HMR (Vite picks a port; 24678 is common)
+      - "5173:5173"
+      - "24678:24678"
     environment:
-      # Improves file watching inside Docker on Linux/Mac/WSL
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
-      # If you access via http://localhost:5173 from host, HMR host helps
       - VITE_HMR_HOST=localhost
     volumes:
-      - .:/app                 # your source
-      - /app/node_modules      # keep node_modules inside the container
+      - .:/app
+      - /app/node_modules
     command: npm run dev -- --host 0.0.0.0 --port 5173

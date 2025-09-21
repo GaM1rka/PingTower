@@ -6,7 +6,7 @@ import API from "./api";
 
 const handleRegistration = async (email: string, password: string) => {
     try {
-        const res = await API.post("/authorize", {email, password});
+        const res = await API.post("/register", {email, password});
         console.log("registered");
         //нет апи, нет ответа. data.token может отличаться (поменять везде)
         localStorage.setItem("token", res.data.token);
@@ -18,7 +18,7 @@ const handleRegistration = async (email: string, password: string) => {
 
 const handleLogin = async (email: string, password: string) => {
     try {
-        const res = await API.post("/users/login", {email, password});
+        const res = await API.post("/login", {email, password});
         console.log("registered");
         localStorage.setItem("token", res.data.token);
     }
