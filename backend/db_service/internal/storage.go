@@ -222,7 +222,7 @@ func (s *Storage) GetSiteLogs(userID, siteID int) ([]PingLog, error) {
 }
 
 func (s *Storage) GetAllUserLogs(userID int) ([]PingLog, error) {
-	// 1) Собираем мапу URL -> site_id из Postgres
+	// URL -> site_id (чтобы вернуть id сайта)
 	siteIDByURL := map[string]int{}
 	rs, err := s.psql.Query(`SELECT id, site FROM user_sites WHERE user_id = $1`, userID)
 	if err != nil {
@@ -239,26 +239,26 @@ func (s *Storage) GetAllUserLogs(userID int) ([]PingLog, error) {
 	}
 	rs.Close()
 
-	// 2) Читаем логи из ClickHouse
+	// берём "первую" (последнюю по времени) запись на каждый site
 	rows, err := s.ch.Query(`
         SELECT req_time, resp_time, status, site
         FROM ping_logs
         WHERE user_id = ?
-        ORDER BY site, req_time DESC
+        ORDER BY site ASC, req_time DESC
+        LIMIT 1 BY site
     `, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	// 3) Маппим и подставляем SiteID по URL
 	var logs []PingLog
 	for rows.Next() {
 		var log PingLog
 		if err := rows.Scan(&log.ReqTime, &log.RespTime, &log.Status, &log.Site); err != nil {
 			return nil, err
 		}
-		log.SiteID = siteIDByURL[log.Site] // будет 0, если сайта нет в user_sites
+		log.SiteID = siteIDByURL[log.Site] // 0, если сайт удалили из user_sites
 		logs = append(logs, log)
 	}
 	return logs, nil
