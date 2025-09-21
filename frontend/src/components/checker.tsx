@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useChecker } from "../api/checkers";
+import { useChecker } from "../hooks/checkers";
 
 type CheckerProps = {
   id: number;
