@@ -11,7 +11,7 @@ type CheckerLog = {
 
 type CreateCheckerPayload = {
   site: string;
-  time: string; // seconds
+  MMtime: number; // seconds
 };
 
 export const useCheckers = () => {
@@ -72,11 +72,11 @@ export const useChecker = (id?: number) => {
   return { checker, loading, error, refresh: () => getChecker() };
 };
 
-export const createChecker = async ({ site, time }: CreateCheckerPayload) => {
+export const createChecker = async ({ site, MMtime }: CreateCheckerPayload) => {
   // Validate a bit on the client:
   if (!site) throw new Error("Site is required");
-  if (typeof time !== "number" || time <= 0) throw new Error("Time must be a positive number (seconds)");
+  if (typeof MMtime !== "number" || MMtime <= 0) throw new Error("Time must be a positive number (seconds)");
 
-  const res = await API.post("/checkers", { site, time });
+  const res = await API.post("/checkers", { site, MMtime });
   return res.data; // let caller update UI or re-fetch; don't reload the page
 };
