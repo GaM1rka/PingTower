@@ -2,11 +2,11 @@ import { useState } from "react";
 import { createChecker } from "../api/checkers";
 import "../index.css"
 
-function convertTime(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number);
-  if (isNaN(hours) || isNaN(minutes)) throw new Error('Invalid time format');
-  return hours * 60 + minutes;
-}
+// function convertTime(time: string): number {
+//   const [hours, minutes] = time.split(':').map(Number);
+//   if (isNaN(hours) || isNaN(minutes)) throw new Error('Invalid time format');
+//   return hours * 60 + minutes;
+// }
 
 function checkURL(URL: string) {
     const urlRegex = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/i;
