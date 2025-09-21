@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useChecker } from "../hooks/checkers";
 
 type CheckerProps = {
@@ -16,11 +16,10 @@ function formatTime(iso: string) {
   }
 }
 
-
 export default function Checker({ id, url, status: initialStatus }: CheckerProps) {
   const [expanded, setExpanded] = useState(false);
-  const { checker: logs, loading, error } = useChecker(id);
-
+  const { checker: logs, loading, error, } = useChecker(id);
+  
   const latestStatus = useMemo<"ok" | "bad" | "initial" | undefined>(() => {
     if (logs && logs.length > 0) return logs[0].status;
     return initialStatus;
