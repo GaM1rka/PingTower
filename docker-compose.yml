@@ -31,6 +31,12 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_MIN_INSYNC_REPLICAS: 1
+    healthcheck:
+      # cub есть в образах Confluent; ждём готовности брокера
+      test: ["CMD", "bash", "-lc", "cub kafka-ready -b localhost:29092 1 30"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     networks: [app-network]
 
   kafka-ui:
@@ -71,8 +77,8 @@ services:
     cpus: "0.5"
     restart: always
     ports:
-      - "9000:9000"   # Native protocol
-      - "8123:8123"   # HTTP interface
+      - "9000:9000"
+      - "8123:8123"
     environment:
       CLICKHOUSE_DB: default
       CLICKHOUSE_USER: default
@@ -126,7 +132,7 @@ services:
     cpus: "0.3"
     ports: ["8083:8083"]
     environment:
-      - PSQL_HOST=postgres_db        # можно оставить — код их не читает, не мешает
+      - PSQL_HOST=postgres_db 
       - PSQL_PORT=5432
       - PSQL_USER=postgres
       - PSQL_PASSWORD=postgres
@@ -182,19 +188,22 @@ services:
     ports: ["8084:8084"]
     environment:
       MAILERSEND_API_KEY: mlsn.56553fafd04e982332a4ef9003ef6fc0345de9fcea0473122e482322f2b83938
-      FROM_EMAIL: MS_mIKkkJ@test-xkjn41m6jz04z781.mlsender.net
+      FROM_EMAIL: MS_QpmOx6@test-65qngkd5o8jlwr12.mlsender.net
       FROM_NAME: PingTower Alert System
       SMTP_HOST: smtp.mailersend.net
       SMTP_PORT: 587
-      SMTP_USERNAME: MS_mIKkkJ@test-xkjn41m6jz04z781.mlsender.net
-      SMTP_PASSWORD: mssp.SFuGnXj.zr6ke4n0z39lon12.CtzsE9m
+      SMTP_USERNAME: MS_QpmOx6@test-65qngkd5o8jlwr12.mlsender.net
+      SMTP_PASSWORD: mssp.yv5Oq0G.z3m5jgrpd804dpyo.wmAD9Od
       KAFKA_BROKERS: kafka1:29092
       KAFKA_TOPIC: notification-alerts
       KAFKA_CONSUMER_GROUP: notification-service
       HEALTH_PORT: 8084
     depends_on:
-      - kafka1
+      kafka1:
+        condition: service_healthy
+    restart: unless-stopped
     networks: [app-network]
+
 
 volumes:
   postgres_data:

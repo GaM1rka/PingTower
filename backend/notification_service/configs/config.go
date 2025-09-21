@@ -14,20 +14,20 @@ var (
 	FromEmail        string
 	FromName         string
 	MaxRetries       int = 3
-	
+
 	// SMTP Configuration
 	SMTPHost     string
 	SMTPPort     int
 	SMTPUsername string
 	SMTPPassword string
-	
+
 	// Kafka Configuration
 	KafkaBrokers           []string
 	KafkaTopic             string
 	KafkaConsumerGroup     string
 	KafkaSessionTimeout    time.Duration
 	KafkaHeartbeatInterval time.Duration
-	
+
 	// Health Check Server
 	HealthPort string
 )
@@ -80,7 +80,7 @@ func Configure() {
 	// Kafka Configuration
 	kafkaBrokersStr := os.Getenv("KAFKA_BROKERS")
 	if kafkaBrokersStr == "" {
-		kafkaBrokersStr = "localhost:9092"
+		kafkaBrokersStr = "localhost:19092"
 		log.Printf("KAFKA_BROKERS not set, using default: %s", kafkaBrokersStr)
 	}
 	KafkaBrokers = strings.Split(kafkaBrokersStr, ",")

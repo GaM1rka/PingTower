@@ -75,7 +75,6 @@ func (h *Handler) AuthHandler(resp http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		// ✅ Генерация JWT (передаём пароль третьим аргументом)
 		jwtBody, err := h.getJWTToken(authReq.Email, userID, authReq.Password)
 		if err != nil {
 			configs.APILogger.Println("get jwt token failed:", err)
@@ -101,7 +100,6 @@ func (h *Handler) AuthHandler(resp http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		// ✅ Генерация JWT (передаём пароль третьим аргументом)
 		jwtBody, err := h.getJWTToken(authReq.Email, userID, authReq.Password)
 		if err != nil {
 			configs.APILogger.Println("get jwt token failed:", err)
@@ -192,22 +190,17 @@ func (h *Handler) PingAllHandler(resp http.ResponseWriter, req *http.Request) {
 				failCount++
 				continue
 			}
-
-			// сохраняем лог (в ClickHouse попадёт resp_time и status=ok|bad)
 			if err := h.savePingLog(userSite.UserID, site.URL, pingResult.ResponseTime, pingResult.Status); err != nil {
 				configs.APILogger.Printf("save ping log failed: %v", err)
 				failCount++
 				continue
 			}
 
-			// считаем метрики
 			if pingResult.Status == "bad" {
 				failCount++
 			} else {
 				successCount++
 			}
-
-			// уведомления только если «плохо»
 			if pingResult.Status == "bad" {
 				userEmail, err := h.getUserEmail(userSite.UserID)
 				if err == nil {
@@ -282,7 +275,7 @@ func (h *Handler) verifyLogin(email, password string) (int, error) {
 func (h *Handler) getJWTToken(email string, userID int, password string) (*models.AuthResp, error) {
 	authData := models.AuthReq{
 		Email:    email,
-		Password: password, // ВАЖНО: не пустой
+		Password: password,
 	}
 	jsonData, _ := json.Marshal(authData)
 
@@ -303,12 +296,11 @@ func (h *Handler) getJWTToken(email string, userID int, password string) (*model
 		return nil, fmt.Errorf("auth service error: status=%d body=%s", resp.StatusCode, string(b))
 	}
 
-	var jwtBody models.AuthResp // структура должна совпадать с JSON от auth_service (/generate)
+	var jwtBody models.AuthResp
 	if err := json.NewDecoder(resp.Body).Decode(&jwtBody); err != nil {
 		return nil, err
 	}
 
-	// Допишем служебные поля
 	jwtBody.ID = userID
 	jwtBody.Email = email
 	return &jwtBody, nil
@@ -334,7 +326,6 @@ func (h *Handler) verifyJWT(req *http.Request) (int, error) {
 	defer vresp.Body.Close()
 
 	if vresp.StatusCode != http.StatusOK {
-		// auth сервис возвращает 200 с {valid:false} — но на всякий случай обработаем и коды ≠ 200
 		b, _ := io.ReadAll(vresp.Body)
 		return 0, fmt.Errorf("validate returned %d: %s", vresp.StatusCode, string(b))
 	}
