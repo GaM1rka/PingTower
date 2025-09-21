@@ -19,8 +19,8 @@ const handleRegistration = async (email: string, password: string) => {
 const handleLogin = async (email: string, password: string) => {
     try {
         const res = await API.post("/login", {email, password});
-        console.log("registered");
-        localStorage.setItem("token", res.data.token);
+        console.log("logged in");
+        localStorage.setItem("token", res.data.access_token);
     }
     catch (e) {
         console.error(`ERROR: ${e}`);
